@@ -1,0 +1,24 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <PropertyGroup>
+    <ProductVersion>2.0.11</ProductVersion>
+    <SourceDir>$(MSBuildThisFileDirectory)..\..\artifacts\EdgeBrowsingPower\win-x64</SourceDir>
+    <OutputName>EdgeBrowsingPower-$(ProductVersion)-win-x64</OutputName>
+    <OutputType>Package</OutputType>
+    <OutputPath>..\..\artifacts\EdgeBrowsingPower\installer\</OutputPath>
+    <IntermediateOutputPath>..\..\artifacts\obj\EdgeBrowsingPower.Installer\</IntermediateOutputPath>
+    <DefineConstants>SourceDir=$(SourceDir);ProductVersion=$(ProductVersion)</DefineConstants>
+    <SuppressValidation>true</SuppressValidation>
+  </PropertyGroup>
+
+  <Target Name="ValidatePublishOutput" BeforeTargets="BeforeBuild">
+    <ItemGroup>
+      <RequiredPublishFile Include="$(SourceDir)\EdgeBrowsingPower.exe" />
+      <RequiredPublishFile Include="$(SourceDir)\D3DCompiler_47_cor3.dll" />
+      <RequiredPublishFile Include="$(SourceDir)\PenImc_cor3.dll" />
+      <RequiredPublishFile Include="$(SourceDir)\PresentationNative_cor3.dll" />
+      <RequiredPublishFile Include="$(SourceDir)\vcruntime140_cor3.dll" />
+      <RequiredPublishFile Include="$(SourceDir)\wpfgfx_cor3.dll" />
+    </ItemGroup>
+    <Error Condition="!Exists('%(RequiredPublishFile.Identity)')" Text="Required publish output is missing: %(RequiredPublishFile.Identity). Run dotnet publish for EdgeBrowsingPower win-x64 self-contained before building the MSI." />
+  </Target>
+</Project>

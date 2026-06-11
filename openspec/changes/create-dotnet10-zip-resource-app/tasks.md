@@ -30,7 +30,7 @@
 ## 5. Packaging and Release
 
 - [x] 5.1 Add repeatable build/publish commands for the `EdgeBrowsingPower` .NET 10 app and document the expected output artifact.
-- [ ] 5.2 Verify the published output includes the bundled zip resource or packaged content asset.
+- [x] 5.2 Verify the published output includes the bundled zip resource or packaged content asset.
 - [ ] 5.3 Create or update winget installer manifests so installer URLs point to GitHub Release assets.
 - [ ] 5.4 Update winget manifest metadata and installer checksums for the published release artifact.
 
@@ -39,5 +39,5 @@
 - [x] 6.1 Run .NET 10 build validation for the `EdgeBrowsingPower` app project.
 - [ ] 6.2 Manually verify launch, `Exit`, missing-input validation, password masking, folder selection cancellation, successful extraction, and successful credential replacement.
 - [ ] 6.3 Verify error paths for missing zip resource, extraction failure, missing credentials file, and invalid credentials JSON.
-- [ ] 6.4 Validate the release artifact installs or runs on Windows and launches the setup dialog.
+- [x] 6.4 Validate the release artifact installs or runs on Windows and launches the setup dialog.
 - [ ] 6.5 Validate winget manifests reference GitHub Release URLs and pass manifest validation.
