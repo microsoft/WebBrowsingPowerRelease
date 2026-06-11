@@ -1,0 +1,46 @@
+schema: spec-driven
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+context: |
+  We are developing a .NET 10 app using winget for installation.
+  Winget installer manifests should use GitHub release URLs for release artifacts.
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+rules:
+  proposal:
+    - State the user problem, goal, and expected outcome clearly.
+    - Keep scope focused and include explicit non-goals when relevant.
+    - Call out user-visible behavior changes, .NET 10 compatibility impact, and winget installation impact.
+    - Identify any GitHub release artifact or URL changes needed for winget.
+  specs:
+    - Write requirements with clear SHALL statements.
+    - Include acceptance scenarios for normal, error, and edge cases.
+    - Keep requirements implementation-independent unless the behavior depends on .NET 10, winget, or GitHub release URLs.
+    - Specify expected winget behavior, including use of GitHub release URLs for installer artifacts.
+  design:
+    - Explain major architecture and dependency decisions.
+    - Describe data flow, error handling, and security considerations when applicable.
+    - Prefer existing project patterns before introducing new abstractions.
+    - Document .NET 10 runtime, packaging, and GitHub release artifact assumptions when relevant.
+  tasks:
+    - Break work into ordered, independently verifiable steps.
+    - Include implementation, documentation, and validation tasks when applicable.
+    - Make each task concrete enough to complete without re-reading the proposal.
+    - Include tasks to verify .NET 10 build output and winget manifests that reference GitHub release URLs.
