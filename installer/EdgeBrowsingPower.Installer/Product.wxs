@@ -1,13 +1,15 @@
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
   <Package
     Name="EdgeBrowsingPower"
     Manufacturer="Microsoft Corporation"
     Version="$(var.ProductVersion)"
-    ProductCode="{1BB8AFEF-40E3-4E90-AB29-B951F2CB145C}"
+    ProductCode="{7F98D4E0-6410-4949-8171-A286F1B48A16}"
     UpgradeCode="{9B2F0D1F-2574-4F28-8B69-1D9CE264B9B9}"
     Scope="perUser">
     <MajorUpgrade DowngradeErrorMessage="A newer version of EdgeBrowsingPower is already installed." />
     <MediaTemplate EmbedCab="yes" />
+    <ui:WixUI Id="WixUI_Minimal" />
+    <WixVariable Id="WixUILicenseRtf" Value="eula.rtf" />
 
     <Feature Id="MainFeature" Title="EdgeBrowsingPower" Level="1">
       <ComponentGroupRef Id="ApplicationFiles" />
@@ -34,36 +36,8 @@
   </Package>
 
   <Fragment>
-    <DirectoryRef Id="INSTALLFOLDER">
-      <Component Id="EdgeBrowsingPowerExeComponent" Guid="{83EA6950-25F1-4A66-B43D-529AB0478542}" Bitness="always64">
-        <File Id="EdgeBrowsingPowerExe" Source="$(var.SourceDir)\EdgeBrowsingPower.exe" KeyPath="yes" />
-      </Component>
-      <Component Id="D3DCompilerComponent" Guid="{A2AA34E4-0B90-48D9-983D-44AA8E4858B2}" Bitness="always64">
-        <File Id="D3DCompilerDll" Source="$(var.SourceDir)\D3DCompiler_47_cor3.dll" KeyPath="yes" />
-      </Component>
-      <Component Id="PenImcComponent" Guid="{8B438D02-78F3-494E-93B4-A99056C6DF91}" Bitness="always64">
-        <File Id="PenImcDll" Source="$(var.SourceDir)\PenImc_cor3.dll" KeyPath="yes" />
-      </Component>
-      <Component Id="PresentationNativeComponent" Guid="{4F7E818C-0D9B-4453-B12B-0F37EB546D86}" Bitness="always64">
-        <File Id="PresentationNativeDll" Source="$(var.SourceDir)\PresentationNative_cor3.dll" KeyPath="yes" />
-      </Component>
-      <Component Id="VCRuntimeComponent" Guid="{298C65C7-2742-43D6-B71A-B3C278E06143}" Bitness="always64">
-        <File Id="VCRuntimeDll" Source="$(var.SourceDir)\vcruntime140_cor3.dll" KeyPath="yes" />
-      </Component>
-      <Component Id="WpfGfxComponent" Guid="{3EFB19BB-2AAB-41C0-B13A-B51F05C517CB}" Bitness="always64">
-        <File Id="WpfGfxDll" Source="$(var.SourceDir)\wpfgfx_cor3.dll" KeyPath="yes" />
-      </Component>
-    </DirectoryRef>
-  </Fragment>
-
-  <Fragment>
-    <ComponentGroup Id="ApplicationFiles">
-      <ComponentRef Id="EdgeBrowsingPowerExeComponent" />
-      <ComponentRef Id="D3DCompilerComponent" />
-      <ComponentRef Id="PenImcComponent" />
-      <ComponentRef Id="PresentationNativeComponent" />
-      <ComponentRef Id="VCRuntimeComponent" />
-      <ComponentRef Id="WpfGfxComponent" />
+    <ComponentGroup Id="ApplicationFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.SourceDir)\**" />
     </ComponentGroup>
   </Fragment>
 </Wix>
