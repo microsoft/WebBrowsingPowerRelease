@@ -4,6 +4,7 @@
         Title="EdgeBrowsingPower"
         Width="440"
         Height="260"
+        Icon="Resources/AppIcon.ico"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen">
   <Grid Margin="24">

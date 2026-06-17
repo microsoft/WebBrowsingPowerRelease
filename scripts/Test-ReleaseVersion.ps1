@@ -1,5 +1,5 @@
 param(
-    [string]$ExpectedVersion = "2.0.11"
+    [string]$ExpectedVersion = "2.0.15"
 )
 
 $ErrorActionPreference = "Stop"
@@ -30,8 +30,23 @@ function Assert-Contains {
 }
 
 $resourcePath = Join-Path $root "resources\EdgeBrowsingPowerV$ExpectedVersion.zip"
-if (-not (Test-Path $resourcePath)) {
-    throw "Expected resource file is missing: $resourcePath"
+if (Test-Path $resourcePath) {
+    throw "The deployment archive must be split into files smaller than 50 MB. Remove monolithic resource file: $resourcePath"
+}
+
+$resourcePartPaths = @(Get-ChildItem (Join-Path $root "resources") -Filter "EdgeBrowsingPowerV$ExpectedVersion.zip.*" -File | Sort-Object Name)
+if ($resourcePartPaths.Count -eq 0) {
+    throw "Expected split resource files are missing: EdgeBrowsingPowerV$ExpectedVersion.zip.*"
+}
+
+$oversizedResourcePart = $resourcePartPaths | Where-Object { $_.Length -ge 50MB } | Select-Object -First 1
+if ($oversizedResourcePart) {
+    throw "Split resource part must be smaller than 50 MB: $($oversizedResourcePart.FullName)"
+}
+
+$documentationPath = Join-Path $root "resources\Browsing_BatteryLife_v2.0.15_and_YouTubeToS_v1.0.2.pdf"
+if (-not (Test-Path $documentationPath)) {
+    throw "Expected documentation file is missing: $documentationPath"
 }
 
 [xml]$project = Get-Content (Join-Path $root "src\EdgeBrowsingPower\EdgeBrowsingPower.csproj")

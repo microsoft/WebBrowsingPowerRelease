@@ -8,16 +8,29 @@
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>EdgeBrowsingPower</AssemblyName>
     <RootNamespace>EdgeBrowsingPower</RootNamespace>
-    <Version>2.0.11</Version>
-    <AssemblyVersion>2.0.11.0</AssemblyVersion>
-    <FileVersion>2.0.11.0</FileVersion>
-    <PackageVersion>2.0.11</PackageVersion>
+    <Version>2.0.15</Version>
+    <AssemblyVersion>2.0.15.0</AssemblyVersion>
+    <FileVersion>2.0.15.0</FileVersion>
+    <PackageVersion>2.0.15</PackageVersion>
     <Product>EdgeBrowsingPower</Product>
     <Company>Microsoft Corporation</Company>
     <Authors>Microsoft Corporation</Authors>
+    <ApplicationIcon>Resources\AppIcon.ico</ApplicationIcon>
+    <PublishSingleFile>false</PublishSingleFile>
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="..\..\resources\EdgeBrowsingPowerV2.0.11.zip" LogicalName="EdgeBrowsingPower.Resources.EdgeBrowsingPowerV2.0.11.zip" />
+    <Resource Include="Resources\AppIcon.ico" />
+    <Content Include="..\..\resources\EdgeBrowsingPowerV2.0.15.zip.*"
+         Link="%(Filename)%(Extension)"
+           CopyToOutputDirectory="PreserveNewest"
+           CopyToPublishDirectory="PreserveNewest"
+           ExcludeFromSingleFile="true" />
+    <Content Include="..\..\resources\Browsing_BatteryLife_v2.0.15_and_YouTubeToS_v1.0.2.pdf"
+           Link="Browsing_BatteryLife_v2.0.15_and_YouTubeToS_v1.0.2.pdf"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest"
+             ExcludeFromSingleFile="true" />
   </ItemGroup>
 </Project>

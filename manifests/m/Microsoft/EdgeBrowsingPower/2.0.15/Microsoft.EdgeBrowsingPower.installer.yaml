@@ -1,19 +1,19 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.10.0.schema.json
 PackageIdentifier: Microsoft.EdgeBrowsingPower
-PackageVersion: 2.0.11
+PackageVersion: 2.0.15
 InstallerLocale: en-US
 InstallerType: msi
 Scope: user
 UpgradeBehavior: install
-ProductCode: '{1BB8AFEF-40E3-4E90-AB29-B951F2CB145C}'
+ProductCode: '{7F98D4E0-6410-4949-8171-A286F1B48A16}'
 AppsAndFeaturesEntries:
 - DisplayName: EdgeBrowsingPower
   Publisher: Microsoft Corporation
-  DisplayVersion: 2.0.11
-  ProductCode: '{1BB8AFEF-40E3-4E90-AB29-B951F2CB145C}'
+  DisplayVersion: 2.0.15
+  ProductCode: '{7F98D4E0-6410-4949-8171-A286F1B48A16}'
 Installers:
 - Architecture: x64
-  InstallerUrl: https://github.com/microsoft/WebBrowsingPowerRelease/releases/download/v2.0.11/EdgeBrowsingPower-2.0.11-win-x64.msi
-  InstallerSha256: EFAE11DE488BAED9C77FA6F277AA348926DE972E9CB13128B2B8ED56C7C948BE
+  InstallerUrl: https://github.com/microsoft/WebBrowsingPowerRelease/releases/download/v2.0.15/EdgeBrowsingPower-2.0.15-win-x64.msi
+  InstallerSha256: D116C46BC08A3D536C9B930C55D228B87BCB9D0403435AAC84BA10CA5ADD6109
 ManifestType: installer
 ManifestVersion: 1.10.0
