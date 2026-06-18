@@ -5,6 +5,7 @@ on:
     branches: [ main, olivia/test-release-work ]
     # Optional: only run when likely version files change
     paths:
+      - .github/workflows/build-and-release.yml
       - src/EdgeBrowsingPower/EdgeBrowsingPower.csproj
       - src/**
       - installer/**
