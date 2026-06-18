@@ -19,8 +19,9 @@ jobs:
     runs-on: windows-latest
     outputs:
       version_changed: ${{ steps.check.outputs.version_changed }}
+      release_folder_exists: ${{ steps.check.outputs.release_folder_exists }}
       release_tag_exists: ${{ steps.check.outputs.release_tag_exists }}
-      should_release: ${{ steps.check.outputs.should_release }}
+      should_build: ${{ steps.check.outputs.should_build }}
       version: ${{ steps.check.outputs.version }}
     steps:
       - name: Checkout
@@ -59,18 +60,28 @@ jobs:
             }
           }
 
+          # Build whenever the versioned release folder does not already exist in the runner workspace.
+          $releaseDir = "out/release/$headVersion"
+          $releaseFolderExists = Test-Path $releaseDir
+
           # Check if a GitHub release tag already exists for this version.
           $tagName = "v$headVersion"
           $tagRef = git ls-remote --tags origin "refs/tags/$tagName"
           $releaseTagExists = -not [string]::IsNullOrWhiteSpace($tagRef)
 
-          # Build/release if version changed OR same version has not been released yet.
-          $shouldRelease = $versionChanged -or (-not $releaseTagExists)
+          # Build/release if the versioned release folder is missing in the runner workspace.
+          $shouldBuild = -not $releaseFolderExists
 
           if ($versionChanged) {
             "version_changed=true" >> $env:GITHUB_OUTPUT
           } else {
             "version_changed=false" >> $env:GITHUB_OUTPUT
+          }
+
+          if ($releaseFolderExists) {
+            "release_folder_exists=true" >> $env:GITHUB_OUTPUT
+          } else {
+            "release_folder_exists=false" >> $env:GITHUB_OUTPUT
           }
 
           if ($releaseTagExists) {
@@ -79,17 +90,17 @@ jobs:
             "release_tag_exists=false" >> $env:GITHUB_OUTPUT
           }
 
-          if ($shouldRelease) {
-            "should_release=true" >> $env:GITHUB_OUTPUT
+          if ($shouldBuild) {
+            "should_build=true" >> $env:GITHUB_OUTPUT
           } else {
-            "should_release=false" >> $env:GITHUB_OUTPUT
+            "should_build=false" >> $env:GITHUB_OUTPUT
           }
 
           "version=$headVersion" >> $env:GITHUB_OUTPUT
 
   build-and-release:
     needs: detect-version
-    if: needs.detect-version.outputs.should_release == 'true'
+    if: needs.detect-version.outputs.should_build == 'true'
     runs-on: windows-latest
     steps:
       - name: Checkout
