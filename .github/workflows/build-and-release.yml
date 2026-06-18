@@ -5,11 +5,11 @@ on:
     branches: [ main ]
     # Optional: only run when likely version files change
     paths:
-      - [EdgeBrowsingPower.csproj](http://_vscodecontentref_/0)
+      - src/EdgeBrowsingPower/EdgeBrowsingPower.csproj
       - src/**
       - installer/**
       - manifests/**
-    workflow_dispatch:
+  workflow_dispatch:
 permissions:
   contents: write
 
