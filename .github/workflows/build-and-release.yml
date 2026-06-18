@@ -79,13 +79,13 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore src/EdgeBrowsingPower/EdgeBrowsingPower.csproj
+        run: dotnet restore src/EdgeBrowsingPower/EdgeBrowsingPower.csproj -r win-x64
 
       - name: Build
-        run: dotnet build src/EdgeBrowsingPower/EdgeBrowsingPower.csproj -c Release --no-restore
+        run: dotnet build src/EdgeBrowsingPower/EdgeBrowsingPower.csproj -c Release -r win-x64 --self-contained true --no-restore
 
       - name: Publish
-        run: dotnet publish src/EdgeBrowsingPower/EdgeBrowsingPower.csproj -c Release -o out/publish --no-build
+        run: dotnet publish src/EdgeBrowsingPower/EdgeBrowsingPower.csproj -c Release -r win-x64 --self-contained true -o out/publish --no-build
 
       - name: Create versioned release folder
         shell: pwsh
