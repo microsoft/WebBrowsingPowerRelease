@@ -2,7 +2,7 @@ name: Build and Release on Version Change
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, olivia/test-release-work ]
     # Optional: only run when likely version files change
     paths:
       - src/EdgeBrowsingPower/EdgeBrowsingPower.csproj
