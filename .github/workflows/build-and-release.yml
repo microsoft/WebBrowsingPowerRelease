@@ -1,4 +1,4 @@
-name: Build and Release on Version Change
+name: Build and Release Current Version
 
 on:
   push:
@@ -22,59 +22,60 @@ env:
   INSTALLER_DIR: artifacts\EdgeBrowsingPower\installer
 
 jobs:
-  detect-version:
+  detect-release-tag:
     runs-on: windows-latest
     outputs:
-      version_changed: ${{ steps.check.outputs.version_changed }}
-      version: ${{ steps.check.outputs.version }}
+      version: ${{ steps.select-tag.outputs.version }}
+      release_tag: ${{ steps.select-tag.outputs.release_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          fetch-depth: 2
+          fetch-depth: 1
 
-      - name: Check version changed
-        id: check
+      - name: Select release tag
+        id: select-tag
         shell: pwsh
         run: |
           $proj = "src/EdgeBrowsingPower/EdgeBrowsingPower.csproj"
-
-          # Current version from HEAD
           [xml]$headXml = Get-Content $proj
-          $headVersion = $headXml.Project.PropertyGroup.Version | Select-Object -First 1
-
-          # Previous commit version (if available)
-          $hasPrev = $true
-          try {
-            git show HEAD~1:$proj > $env:RUNNER_TEMP\prev.csproj
-          } catch {
-            $hasPrev = $false
+          $version = $headXml.Project.PropertyGroup.Version | Select-Object -First 1
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw "Project version was not found in $proj."
           }
 
-          if (-not $hasPrev) {
-            # First run: treat as changed
-            $versionChanged = $true
+          $baseTag = "v$version"
+          $remoteTags = @(
+            git ls-remote --tags origin "refs/tags/$baseTag*" |
+              ForEach-Object {
+                if ($_ -match "refs/tags/(.+?)(\^\{\})?$") {
+                  $matches[1]
+                }
+              } |
+              Sort-Object -Unique
+          )
+
+          if ($remoteTags -notcontains $baseTag) {
+            $releaseTag = $baseTag
           } else {
-            [xml]$prevXml = Get-Content $env:RUNNER_TEMP\prev.csproj
-            $prevVersion = $prevXml.Project.PropertyGroup.Version | Select-Object -First 1
-
-            $versionChanged = $false
-            if ($headVersion -and $headVersion -ne $prevVersion) {
-              $versionChanged = $true
-            }
+            $suffix = 1
+            do {
+              $releaseTag = "$baseTag-$suffix"
+              $suffix++
+            } while ($remoteTags -contains $releaseTag)
           }
 
-          if ($versionChanged) {
-            "version_changed=true" >> $env:GITHUB_OUTPUT
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "release_tag=$releaseTag" >> $env:GITHUB_OUTPUT
+
+          if ($releaseTag -eq $baseTag) {
+            "Selected release tag: $releaseTag" >> $env:GITHUB_STEP_SUMMARY
           } else {
-            "version_changed=false" >> $env:GITHUB_OUTPUT
+            "Tag $baseTag already exists. Selected release tag: $releaseTag" >> $env:GITHUB_STEP_SUMMARY
           }
-
-          "version=$headVersion" >> $env:GITHUB_OUTPUT
 
   build-and-release:
-    needs: detect-version
-    if: needs.detect-version.outputs.version_changed == 'true'
+    needs: detect-release-tag
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -123,7 +124,7 @@ jobs:
           endpoint: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
           signing-account-name: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME }}
           certificate-profile-name: ${{ vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
-          files: ${{ github.workspace }}\${{ env.INSTALLER_DIR }}\EdgeBrowsingPower-${{ needs.detect-version.outputs.version }}-${{ env.RUNTIME_IDENTIFIER }}.msi
+          files: ${{ github.workspace }}\${{ env.INSTALLER_DIR }}\EdgeBrowsingPower-${{ needs.detect-release-tag.outputs.version }}-${{ env.RUNTIME_IDENTIFIER }}.msi
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
@@ -131,7 +132,7 @@ jobs:
       - name: Verify code signatures
         shell: pwsh
         run: |
-          $version = "${{ needs.detect-version.outputs.version }}"
+          $version = "${{ needs.detect-release-tag.outputs.version }}"
           $signedFiles = @(
             "$env:PUBLISH_DIR\EdgeBrowsingPower.exe",
             "$env:PUBLISH_DIR\EdgeBrowsingPower.dll",
@@ -150,7 +151,7 @@ jobs:
       - name: Create versioned release folder
         shell: pwsh
         run: |
-          $version = "${{ needs.detect-version.outputs.version }}"
+          $version = "${{ needs.detect-release-tag.outputs.version }}"
           $releaseDir = "out\release\$version"
           $msiName = "EdgeBrowsingPower-$version-$env:RUNTIME_IDENTIFIER.msi"
           New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
@@ -169,14 +170,14 @@ jobs:
       - name: Upload build artifact (optional)
         uses: actions/upload-artifact@v4
         with:
-          name: release-${{ needs.detect-version.outputs.version }}
+          name: release-${{ needs.detect-release-tag.outputs.release_tag }}
           path: ${{ env.RELEASE_DIR }}
 
       - name: Create GitHub Release and upload package
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ needs.detect-version.outputs.version }}
-          name: EdgeBrowsingPower v${{ needs.detect-version.outputs.version }}
+          tag_name: ${{ needs.detect-release-tag.outputs.release_tag }}
+          name: EdgeBrowsingPower ${{ needs.detect-release-tag.outputs.release_tag }}
           files: |
             ${{ env.ZIP_PATH }}
             ${{ env.MSI_PATH }}
