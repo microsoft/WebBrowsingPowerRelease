@@ -13,6 +13,7 @@ For users installing a released build:
 - Install `EdgeBrowsingPower` from the published MSI or winget package for version `2.0.15`.
 - Launch `EdgeBrowsingPower` from the Start menu or Installed apps entry.
 - Enter the MSA account ID and password required by the deployment package.
+- The MSA account ID and password fields are for testing purposes. They are primarily used to test the Outlook Website. Please create a test account to run the test.
 - Select `Create`, choose the destination folder, and wait for the completion message.
 - Once unzip completed Execute "RunJob_Training.cmd" to launch Assessment in training mode. 
 - Once "RunJob_Training.cmd" execute completed, Execute "RunJob_Trained.cmd" to launch Assessment in trained mode to get final result. 

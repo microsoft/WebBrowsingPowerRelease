@@ -90,7 +90,7 @@ public partial class MainWindow : Window
             MsaPasswordBox.Clear();
             SetStatus("Creation completed successfully.", isError: false);
             WpfMessageBox.Show(
-                "Creation completed successfully.",
+                "Creation completed successfully.\n\nRun RunJobABLTraining.cmd first, then run RunJobABLTrained.cmd.\n\nIf you have any problem, check Browsing_BatteryLife_v2.0.15_and_YouTubeToS_v1.0.2.pdf.",
                 "EdgeBrowsingPower",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
