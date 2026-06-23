@@ -32,6 +32,26 @@ dotnet build .\installer\EdgeBrowsingPower.Installer\EdgeBrowsingPower.Installer
 
 Expected installer artifact: `artifacts/EdgeBrowsingPower/installer/EdgeBrowsingPower-2.0.15-win-x64.msi`.
 
+## CI/CD Code Signing
+
+The GitHub Actions release workflow signs `EdgeBrowsingPower.exe`, `EdgeBrowsingPower.dll`, and the MSI with Azure Artifact Signing before packaging and publishing release assets. Configure the repository with these Actions secrets:
+
+```text
+AZURE_CLIENT_ID
+AZURE_TENANT_ID
+AZURE_SUBSCRIPTION_ID
+```
+
+Configure these Actions variables for the signing account:
+
+```text
+AZURE_ARTIFACT_SIGNING_ENDPOINT
+AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME
+AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME
+```
+
+The Azure identity must have permission to sign with the configured Artifact Signing certificate profile. The workflow verifies Authenticode signatures before it uploads the zip and MSI assets.
+
 Validate release version alignment before publishing:
 
 ```powershell

@@ -85,6 +85,8 @@ EdgeBrowsingPower handles a password entered by the user. The password field is 
 
 Choose the extraction destination carefully. The app extracts the bundled zip to the selected folder with overwrite enabled, then searches that folder for `parameters.abl.credentials.json`.
 
+The release workflow signs the published application binaries and MSI with Azure Artifact Signing before uploading GitHub Release assets. See `docs/release.md` for the required CI/CD secrets and variables.
+
 ## Further Reading
 
 - [Release documentation](docs/release.md)
