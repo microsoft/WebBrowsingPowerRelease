@@ -13,6 +13,7 @@ For users installing a released build:
 - Install `EdgeBrowsingPower` from the published MSI or winget package for version `2.0.15`.
 - Launch `EdgeBrowsingPower` from the Start menu or Installed apps entry.
 - Enter the MSA account ID and password required by the deployment package.
+- The MSA account ID and password fields are for testing purposes. They are primarily used to test the Outlook Website. Please create a test account to run the test.
 - Select `Create`, choose the destination folder, and wait for the completion message.
 - Once unzip completed Execute "RunJob_Training.cmd" to launch Assessment in training mode. 
 - Once "RunJob_Training.cmd" execute completed, Execute "RunJob_Trained.cmd" to launch Assessment in trained mode to get final result. 
@@ -84,6 +85,8 @@ winget validate .\manifests\m\Microsoft\EdgeBrowsingPower\2.0.15
 EdgeBrowsingPower handles a password entered by the user. The password field is masked in the UI, the app does not display the password in error messages, and the app writes the password only to the extracted `parameters.abl.credentials.json` file required by the deployment package.
 
 Choose the extraction destination carefully. The app extracts the bundled zip to the selected folder with overwrite enabled, then searches that folder for `parameters.abl.credentials.json`.
+
+The release workflow signs the published application binaries and MSI with Azure Artifact Signing before uploading GitHub Release assets. See `docs/release.md` for the required CI/CD secrets and variables.
 
 ## Further Reading
 

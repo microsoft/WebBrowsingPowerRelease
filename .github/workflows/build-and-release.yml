@@ -13,6 +13,13 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  id-token: write
+
+env:
+  CONFIGURATION: Release
+  RUNTIME_IDENTIFIER: win-x64
+  PUBLISH_DIR: artifacts\EdgeBrowsingPower\win-x64
+  INSTALLER_DIR: artifacts\EdgeBrowsingPower\installer
 
 jobs:
   detect-version:
@@ -79,26 +86,85 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore src/EdgeBrowsingPower/EdgeBrowsingPower.csproj -r win-x64
+        run: dotnet restore .\src\EdgeBrowsingPower\EdgeBrowsingPower.csproj -r $env:RUNTIME_IDENTIFIER
 
       - name: Build
-        run: dotnet build src/EdgeBrowsingPower/EdgeBrowsingPower.csproj -c Release -r win-x64 --self-contained true --no-restore
+        run: dotnet build .\src\EdgeBrowsingPower\EdgeBrowsingPower.csproj -c $env:CONFIGURATION -r $env:RUNTIME_IDENTIFIER --self-contained true --no-restore
 
       - name: Publish
-        run: dotnet publish src/EdgeBrowsingPower/EdgeBrowsingPower.csproj -c Release -r win-x64 --self-contained true -o out/publish --no-build
+        run: dotnet publish .\src\EdgeBrowsingPower\EdgeBrowsingPower.csproj -c $env:CONFIGURATION -r $env:RUNTIME_IDENTIFIER --self-contained true -o $env:PUBLISH_DIR --no-build
+
+      - name: Azure login for code signing
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Sign published app binaries
+        uses: azure/artifact-signing-action@v2.0.0
+        with:
+          endpoint: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
+          files: |
+            ${{ github.workspace }}\${{ env.PUBLISH_DIR }}\EdgeBrowsingPower.exe
+            ${{ github.workspace }}\${{ env.PUBLISH_DIR }}\EdgeBrowsingPower.dll
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Build MSI installer
+        run: dotnet build .\installer\EdgeBrowsingPower.Installer\EdgeBrowsingPower.Installer.wixproj -c $env:CONFIGURATION -p:SuppressValidation=true
+
+      - name: Sign MSI installer
+        uses: azure/artifact-signing-action@v2.0.0
+        with:
+          endpoint: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ vars.AZURE_ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
+          files: ${{ github.workspace }}\${{ env.INSTALLER_DIR }}\EdgeBrowsingPower-${{ needs.detect-version.outputs.version }}-${{ env.RUNTIME_IDENTIFIER }}.msi
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Verify code signatures
+        shell: pwsh
+        run: |
+          $version = "${{ needs.detect-version.outputs.version }}"
+          $signedFiles = @(
+            "$env:PUBLISH_DIR\EdgeBrowsingPower.exe",
+            "$env:PUBLISH_DIR\EdgeBrowsingPower.dll",
+            "$env:INSTALLER_DIR\EdgeBrowsingPower-$version-$env:RUNTIME_IDENTIFIER.msi"
+          )
+
+          foreach ($file in $signedFiles) {
+            $signature = Get-AuthenticodeSignature -FilePath $file
+            if ($signature.Status -ne "Valid") {
+              throw "Invalid code signature for ${file}: $($signature.Status) $($signature.StatusMessage)"
+            }
+
+            Write-Host "Valid code signature: $file"
+          }
 
       - name: Create versioned release folder
         shell: pwsh
         run: |
           $version = "${{ needs.detect-version.outputs.version }}"
-          $releaseDir = "out/release/$version"
+          $releaseDir = "out\release\$version"
+          $msiName = "EdgeBrowsingPower-$version-$env:RUNTIME_IDENTIFIER.msi"
           New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
 
           $zipName = "EdgeBrowsingPower-$version.zip"
-          Compress-Archive -Path "out/publish/*" -DestinationPath "$releaseDir/$zipName" -Force
+          Compress-Archive -Path "$env:PUBLISH_DIR\*" -DestinationPath "$releaseDir\$zipName" -Force
+          Copy-Item -Path "$env:INSTALLER_DIR\$msiName" -Destination "$releaseDir\$msiName" -Force
+
+          $msiHash = (Get-FileHash "$releaseDir\$msiName" -Algorithm SHA256).Hash
+          "MSI SHA-256: $msiHash" >> $env:GITHUB_STEP_SUMMARY
 
           "RELEASE_DIR=$releaseDir" >> $env:GITHUB_ENV
-          "ZIP_PATH=$releaseDir/$zipName" >> $env:GITHUB_ENV
+          "ZIP_PATH=$releaseDir\$zipName" >> $env:GITHUB_ENV
+          "MSI_PATH=$releaseDir\$msiName" >> $env:GITHUB_ENV
 
       - name: Upload build artifact (optional)
         uses: actions/upload-artifact@v4
@@ -111,5 +177,7 @@ jobs:
         with:
           tag_name: v${{ needs.detect-version.outputs.version }}
           name: EdgeBrowsingPower v${{ needs.detect-version.outputs.version }}
-          files: ${{ env.ZIP_PATH }}
+          files: |
+            ${{ env.ZIP_PATH }}
+            ${{ env.MSI_PATH }}
           generate_release_notes: true
