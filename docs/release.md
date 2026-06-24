@@ -30,7 +30,7 @@ dotnet publish .\src\EdgeBrowsingPower\EdgeBrowsingPower.csproj -c Release -r wi
 dotnet build .\installer\EdgeBrowsingPower.Installer\EdgeBrowsingPower.Installer.wixproj -c Release -p:SuppressValidation=true
 ```
 
-Expected installer artifact: `artifacts/EdgeBrowsingPower/installer/EdgeBrowsingPower-2.0.15-win-x64.msi`.
+Expected installer artifact: `artifacts/EdgeBrowsingPower/installer/EdgeBrowsingPower-2.0.15.msi`.
 
 ## CI/CD Code Signing
 
@@ -62,13 +62,13 @@ Validate release version alignment before publishing:
 Winget installer manifests for EdgeBrowsingPower must point installer URLs to GitHub Release assets. For version `2.0.15`, use:
 
 ```yaml
-InstallerUrl: https://github.com/microsoft/WebBrowsingPowerRelease/releases/download/v2.0.15/EdgeBrowsingPower-2.0.15-win-x64.msi
+InstallerUrl: https://github.com/microsoft/WebBrowsingPowerRelease/releases/download/v2.0.15/EdgeBrowsingPower-2.0.15.msi
 ```
 
 After publishing the GitHub Release asset, update the winget manifest checksum from the final artifact:
 
 ```powershell
-Get-FileHash .\artifacts\EdgeBrowsingPower\installer\EdgeBrowsingPower-2.0.15-win-x64.msi -Algorithm SHA256
+Get-FileHash .\artifacts\EdgeBrowsingPower\installer\EdgeBrowsingPower-2.0.15.msi -Algorithm SHA256
 ```
 
 Current local MSI SHA-256: `D116C46BC08A3D536C9B930C55D228B87BCB9D0403435AAC84BA10CA5ADD6109`.

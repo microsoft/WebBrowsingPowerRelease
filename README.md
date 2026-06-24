@@ -60,7 +60,7 @@ dotnet build .\installer\EdgeBrowsingPower.Installer\EdgeBrowsingPower.Installer
 Expected MSI artifact:
 
 ```text
-artifacts/EdgeBrowsingPower/installer/EdgeBrowsingPower-2.0.15-win-x64.msi
+artifacts/EdgeBrowsingPower/installer/EdgeBrowsingPower-2.0.15.msi
 ```
 
 ## Winget
@@ -70,13 +70,13 @@ The winget manifests are authored for package identifier `Microsoft.EdgeBrowsing
 The installer manifest expects the MSI to be published as a GitHub Release asset at:
 
 ```text
-https://github.com/microsoft/WebBrowsingPowerRelease/releases/download/v2.0.15/EdgeBrowsingPower-2.0.15-win-x64.msi
+https://github.com/microsoft/WebBrowsingPowerRelease/releases/download/v2.0.15/EdgeBrowsingPower-2.0.15.msi
 ```
 
 After uploading the final MSI asset, recompute the checksum and update `InstallerSha256` if the bytes changed:
 
 ```powershell
-Get-FileHash .\artifacts\EdgeBrowsingPower\installer\EdgeBrowsingPower-2.0.15-win-x64.msi -Algorithm SHA256
+Get-FileHash .\artifacts\EdgeBrowsingPower\installer\EdgeBrowsingPower-2.0.15.msi -Algorithm SHA256
 winget validate .\manifests\m\Microsoft\EdgeBrowsingPower\2.0.15
 ```
 

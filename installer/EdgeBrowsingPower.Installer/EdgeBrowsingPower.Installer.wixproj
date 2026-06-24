@@ -2,7 +2,7 @@
   <PropertyGroup>
     <ProductVersion>2.0.15</ProductVersion>
     <SourceDir>$(MSBuildThisFileDirectory)..\..\artifacts\EdgeBrowsingPower\win-x64</SourceDir>
-    <OutputName>EdgeBrowsingPower-$(ProductVersion)-win-x64</OutputName>
+    <OutputName>EdgeBrowsingPower-$(ProductVersion)</OutputName>
     <OutputType>Package</OutputType>
     <OutputPath>..\..\artifacts\EdgeBrowsingPower\installer\</OutputPath>
     <IntermediateOutputPath>..\..\artifacts\obj\EdgeBrowsingPower.Installer\</IntermediateOutputPath>
