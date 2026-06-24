@@ -1,0 +1,410 @@
+# .pipelines/azure-pipelines.yml
+# Pattern 2:
+# GitHub repo = source
+# Azure DevOps / OneBranch = build + sign + release
+
+name: BuildAndRelease_CurrentVersion_$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - .pipelines/azure-pipelines.yml
+      - src/EdgeBrowsingPower/EdgeBrowsingPower.csproj
+      - src/**
+      - installer/**
+      - manifests/**
+
+pr: none
+
+resources:
+  repositories:
+    # OneBranch templates repo.
+    # Your ADO org may already define this centrally; keep this if needed.
+    - repository: templates
+      type: git
+      name: OneBranch.Pipelines/GovernedTemplates
+      ref: refs/heads/main
+
+variables:
+  CONFIGURATION: Release
+  RUNTIME_IDENTIFIER: win-x64
+
+  # Keep Windows-style paths because this pipeline runs on Windows.
+  PUBLISH_DIR: artifacts\EdgeBrowsingPower\win-x64
+  INSTALLER_DIR: artifacts\EdgeBrowsingPower\installer
+
+  # OneBranch / PRS signing variable.
+  # Internal guidance says official builds need Use_PRS=true or ENABLE_PRS_DELAYSIGN=1
+  # to get real ESRP signing instead of test/delay signing.
+  ENABLE_PRS_DELAYSIGN: 1
+
+  ROOT: $(Build.SourcesDirectory)
+  REPOROOT: $(Build.SourcesDirectory)
+  OUTPUTROOT: $(Build.SourcesDirectory)\out
+
+  # Used only by the optional GitHub Release step.
+  # Set this to your GitHub repo full name.
+  GITHUB_REPO: microsoft/WebBrowsingPowerRelease
+
+extends:
+  template: v2/OneBranch.Official.CrossPlat.yml@templates
+  parameters:
+    stages:
+      - stage: Build_Sign_Release
+        displayName: Build, Sign, Verify, and Release
+        jobs:
+          - job: main
+            displayName: Build and sign EdgeBrowsingPower
+            pool:
+              type: windows
+
+            variables:
+              # Optional: if Guardian CodeSign validation complains about files
+              # that should not be signed, add exclusions here.
+              # Example:
+              # ob_sdl_codeSignValidation_excludes: -|**\*.json;**\*.txt;
+              ob_sdl_codeSignValidation_excludes: ''
+
+            steps:
+              - checkout: self
+                clean: true
+                fetchDepth: 1
+
+              # ------------------------------------------------------------
+              # 1. Detect release version and release tag
+              # ------------------------------------------------------------
+              - task: PowerShell@2
+                name: SelectTag
+                displayName: Select release tag from csproj version
+                inputs:
+                  targetType: inline
+                  pwsh: true
+                  script: |
+                    $proj = "$(Build.SourcesDirectory)\src\EdgeBrowsingPower\EdgeBrowsingPower.csproj"
+
+                    if (!(Test-Path $proj)) {
+                      throw "Project file not found: $proj"
+                    }
+
+                    [xml]$headXml = Get-Content $proj
+                    $version = $headXml.Project.PropertyGroup.Version | Select-Object -First 1
+
+                    if ([string]::IsNullOrWhiteSpace($version)) {
+                      throw "Project version was not found in $proj."
+                    }
+
+                    $baseTag = "v$version"
+
+                    Write-Host "Detected version: $version"
+                    Write-Host "Base release tag: $baseTag"
+
+                    $remoteTags = @(
+                      git ls-remote --tags origin "refs/tags/$baseTag*" |
+                        ForEach-Object {
+                          if ($_ -match "refs/tags/(.+?)(\^\{\})?$") {
+                            $matches[1]
+                          }
+                        } |
+                        Sort-Object -Unique
+                    )
+
+                    if ($remoteTags -notcontains $baseTag) {
+                      $releaseTag = $baseTag
+                    }
+                    else {
+                      $suffix = 1
+                      do {
+                        $releaseTag = "$baseTag-$suffix"
+                        $suffix++
+                      } while ($remoteTags -contains $releaseTag)
+                    }
+
+                    Write-Host "Selected release tag: $releaseTag"
+
+                    Write-Host "##vso[task.setvariable variable=VERSION]$version"
+                    Write-Host "##vso[task.setvariable variable=RELEASE_TAG]$releaseTag"
+
+                    "Detected version: $version" | Out-File -FilePath "$(Build.ArtifactStagingDirectory)\version-summary.txt" -Encoding utf8 -Append
+                    "Selected release tag: $releaseTag" | Out-File -FilePath "$(Build.ArtifactStagingDirectory)\version-summary.txt" -Encoding utf8 -Append
+
+              # ------------------------------------------------------------
+              # 2. Setup .NET 10
+              # ------------------------------------------------------------
+              - task: UseDotNet@2
+                displayName: Setup .NET 10 SDK
+                inputs:
+                  packageType: sdk
+                  version: 10.0.x
+
+              # ------------------------------------------------------------
+              # 3. Restore / Build / Publish app
+              # ------------------------------------------------------------
+              - task: PowerShell@2
+                displayName: Restore EdgeBrowsingPower
+                inputs:
+                  targetType: inline
+                  pwsh: true
+                  script: |
+                    dotnet restore "$(Build.SourcesDirectory)\src\EdgeBrowsingPower\EdgeBrowsingPower.csproj" `
+                      -r "$(RUNTIME_IDENTIFIER)"
+
+              - task: PowerShell@2
+                displayName: Build EdgeBrowsingPower
+                inputs:
+                  targetType: inline
+                  pwsh: true
+                  script: |
+                    dotnet build "$(Build.SourcesDirectory)\src\EdgeBrowsingPower\EdgeBrowsingPower.csproj" `
+                      -c "$(CONFIGURATION)" `
+                      -r "$(RUNTIME_IDENTIFIER)" `
+                      --self-contained true `
+                      --no-restore
+
+              - task: PowerShell@2
+                displayName: Publish EdgeBrowsingPower
+                inputs:
+                  targetType: inline
+                  pwsh: true
+                  script: |
+                    $publishDir = "$(Build.SourcesDirectory)\$(PUBLISH_DIR)"
+
+                    New-Item -ItemType Directory -Force -Path $publishDir | Out-Null
+
+                    dotnet publish "$(Build.SourcesDirectory)\src\EdgeBrowsingPower\EdgeBrowsingPower.csproj" `
+                      -c "$(CONFIGURATION)" `
+                      -r "$(RUNTIME_IDENTIFIER)" `
+                      --self-contained true `
+                      -o $publishDir `
+                      --no-build
+
+              # ------------------------------------------------------------
+              # 4. Sign published app binaries with OneBranch signing
+              # ------------------------------------------------------------
+              - task: onebranch.pipeline.signing@1
+                displayName: Sign published app binaries
+                inputs:
+                  command: sign
+
+                  # external_distribution = deployed/run outside Microsoft.
+                  # Use internal_azure_service only if this is internal Azure service content.
+                  signing_profile: external_distribution
+
+                  files_to_sign: |
+                    EdgeBrowsingPower.exe;EdgeBrowsingPower.dll
+
+                  search_root: $(Build.SourcesDirectory)\$(PUBLISH_DIR)
+
+              # ------------------------------------------------------------
+              # 5. Build MSI installer after signing app binaries
+              # ------------------------------------------------------------
+              - task: PowerShell@2
+                displayName: Build MSI installer
+                inputs:
+                  targetType: inline
+                  pwsh: true
+                  script: |
+                    dotnet build "$(Build.SourcesDirectory)\installer\EdgeBrowsingPower.Installer\EdgeBrowsingPower.Installer.wixproj" `
+                      -c "$(CONFIGURATION)" `
+                      -p:SuppressValidation=true
+
+              # ------------------------------------------------------------
+              # 6. Sign MSI installer
+              # ------------------------------------------------------------
+              - task: onebranch.pipeline.signing@1
+                displayName: Sign MSI installer
+                inputs:
+                  command: sign
+                  signing_profile: external_distribution
+                  files_to_sign: |
+                    EdgeBrowsingPower-$(VERSION)-$(RUNTIME_IDENTIFIER).msi
+                  search_root: $(Build.SourcesDirectory)\$(INSTALLER_DIR)
+
+              # ------------------------------------------------------------
+              # 7. Verify code signatures
+              # ------------------------------------------------------------
+              - task: PowerShell@2
+                displayName: Verify    inputs:
+                  targetType: inline
+                  pwsh: true
+                  script: |
+                    $version = "$(VERSION)"
+
+                    $signedFiles = @(
+                      "$(Build.SourcesDirectory)\$(PUBLISH_DIR)\EdgeBrowsingPower.exe",
+                      "$(Build.SourcesDirectory)\$(PUBLISH_DIR)\EdgeBrowsingPower.dll",
+                      "$(Build.SourcesDirectory)\$(INSTALLER_DIR)\EdgeBrowsingPower-$version-$(RUNTIME_IDENTIFIER).msi"
+                    )
+
+                    foreach ($file in $signedFiles) {
+                      if (!(Test-Path $file)) {
+                        throw "Expected signed file not found: $file"
+                      }
+
+                      $signature = Get-AuthenticodeSignature -FilePath $file
+
+                      if ($signature.Status -ne "Valid") {
+                        throw "Invalid code signature for $file : $($signature.Status) $($signature.StatusMessage)"
+                      }
+
+                      Write-Host "Valid code signature: $file"
+                    }
+
+              # ------------------------------------------------------------
+              # 8. Create versioned release folder
+              # ------------------------------------------------------------
+              - task: PowerShell@2
+                displayName: Create versioned release folder
+                inputs:
+                  targetType: inline
+                  pwsh: true
+                  script: |
+                    $version = "$(VERSION)"
+                    $releaseTag = "$(RELEASE_TAG)"
+
+                    $releaseDir = "$(Build.ArtifactStagingDirectory)\release\$version"
+                    $msiName = "EdgeBrowsingPower-$version-$(RUNTIME_IDENTIFIER).msi"
+                    $zipName = "EdgeBrowsingPower-$version.zip"
+
+                    New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
+
+                    $publishDir = "$(Build.SourcesDirectory)\$(PUBLISH_DIR)"
+                    $installerDir = "$(Build.SourcesDirectory)\$(INSTALLER_DIR)"
+
+                    Compress-Archive `
+                      -Path "$publishDir\*" `
+                      -DestinationPath "$releaseDir\$zipName" `
+                      -Force
+
+                    Copy-Item `
+                      -Path "$installerDir\$msiName" `
+                      -Destination "$releaseDir\$msiName" `
+                      -Force
+
+                    $msiHash = (Get-FileHash "$releaseDir\$msiName" -Algorithm SHA256).Hash
+                    Write-Host "MSI SHA-256: $msiHash"
+
+                    "MSI SHA-256: $msiHash" | Out-File -FilePath "$(Build.ArtifactStagingDirectory)\version-summary.txt" -Encoding utf8 -Append
+
+                    Write-Host "##vso[task.setvariable variable=RELEASE_DIR]$releaseDir"
+                    Write-Host "##vso[task.setvariable variable=ZIP_PATH]$releaseDir\$zipName"
+                    Write-Host "##vso[task.setvariable variable=MSI_PATH]$releaseDir\$msiName"
+
+              # ------------------------------------------------------------
+              # 9. Publish signed release artifact to Azure DevOps
+              # ------------------------------------------------------------
+              - task: PublishPipelineArtifact@1
+                displayName: Publish signed release artifact
+                inputs:
+                  targetPath: $(Build.ArtifactStagingDirectory)\release\$(VERSION)
+                  artifact: release-$(RELEASE_TAG)
+                  publishLocation: pipeline
+
+              - task: PublishPipelineArtifact@1
+                displayName: Publish version summary
+                inputs:
+                  targetPath: $(Build.ArtifactStagingDirectory)\version-summary.txt
+                  artifact: release-summary-$(RELEASE_TAG)
+                  publishLocation: pipeline
+
+              # ------------------------------------------------------------
+              # 10. Optional: Create GitHub Release and upload ZIP/MSI
+              #
+              # Requirements:
+              #   - Create an Azure DevOps secret variable named GITHUB_RELEASE_PAT
+              #   - PAT must have permission to create releases and upload assets
+              #   - Set GITHUB_REPO variable above, e.g. microsoft/WebBrowsingPowerRelease
+              # ------------------------------------------------------------
+              - task: PowerShell@2
+                displayName: Optional - Create GitHub Release and upload package
+                condition: and(succeeded(), ne(variables['GITHUB_RELEASE_PAT'], ''))
+                env:
+                  GITHUB_TOKEN: $(GITHUB_RELEASE_PAT)
+                inputs:
+                  targetType: inline
+                  pwsh: true
+                  script: |
+                    $repo = "$(GITHUB_REPO)"
+                    $tag = "$(RELEASE_TAG)"
+                    $version = "$(VERSION)"
+                    $zipPath = "$(ZIP_PATH)"
+                    $msiPath = "$(MSI_PATH)"
+
+                    if ([string]:: {
+                      Write-Host "GITHUB_RELEASE_PAT is not set. Skipping GitHub Release creation."
+                      exit 0
+                    }
+
+                    if (!(Test-Path $zipPath)) {
+                      throw "ZIP not found: $zipPath"
+                    }
+
+                    if (!(Test-Path $msiPath)) {
+                      throw "MSI not found: $msiPath"
+                    }
+
+                    $headers = @{
+                      Authorization = "Bearer $env:GITHUB_TOKEN"
+                      Accept        = "application/vnd.github+json"
+                      "X-GitHub-Api-Version" = "2022-11-28"
+                    }
+
+                    $releaseBody = @{
+                      tag_name = $tag
+                      name = "EdgeBrowsingPower $tag"
+                      generate_release_notes = $true
+                    } | ConvertTo-Json -Depth 10
+
+                    Write-Host "Creating GitHub release $tag in $repo"
+
+                    try {
+                      $release = Invoke-RestMethod `
+                        -Method Post `
+                        -Uri "https://api.github.com/repos/$repo/releases" `
+                        -Headers $headers `
+                        -Body $releaseBody `
+                        -ContentType "application/json"
+                    }
+                    catch {
+                      $errorText = $_.ErrorDetails.Message
+                      if ($errorText -match "already_exists" -or $_.Exception.Message -match "422") {
+                        Write-Host "Release already exists. Fetching existing release for tag $tag."
+                        $release = Invoke-RestMethod `
+                          -Method Get `
+                          -Uri "https://api.github.com/repos/$repo/releases/tags/$tag" `
+                          -Headers $headers
+                      }
+                      else {
+                        throw
+                      }
+                    }
+
+                    function Upload-GitHubReleaseAsset {
+                      param(
+                        [Parameter(Mandatory = $true)][string]$UploadUrl,
+                        [Parameter(Mandatory = $true)][string]$FilePath
+                      )
+
+                      $fileName = [System.IO.Path]::GetFileName($FilePath)
+                      $uploadUri = ($UploadUrl -replace "\{.*\}", "") + "?name=$fileName"
+
+                      Write-Host "Uploading $fileName"
+
+                      Invoke-RestMethod `
+                        -Method Post `
+                        -Uri $uploadUri `
+                        -Headers @{
+                          Authorization = "Bearer $env:GITHUB_TOKEN"
+                          Accept        = "application/vnd.github+json"
+                          "X-GitHub-Api-Version" = "2022-11-28"
+                        } `
+                        -ContentType "application/octet-stream" `
+                        -InFile $FilePath | Out-Null
+                    }
+
+                    Upload-GitHubReleaseAsset -UploadUrl $release.upload_url -FilePath $zipPath
+                    Upload-GitHubReleaseAsset -UploadUrl $release.upload_url -FilePath $msiPath
+
+                    Write-Host "GitHub Release completed: $tag"
