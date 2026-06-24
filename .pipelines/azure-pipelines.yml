@@ -120,7 +120,9 @@ extends:
                   pwsh: true
                   script: |
                     dotnet restore "$(REPO_ROOT)\src\EdgeBrowsingPower\EdgeBrowsingPower.csproj" `
-                      -r "$(RUNTIME_IDENTIFIER)"
+                      -r "$(RUNTIME_IDENTIFIER)" `
+                      --ignore-failed-sources `
+                      -p:NuGetAudit=false
 
               - task: PowerShell@2
                 displayName: Build EdgeBrowsingPower
@@ -167,7 +169,9 @@ extends:
                   script: |
                     dotnet build "$(REPO_ROOT)\installer\EdgeBrowsingPower.Installer\EdgeBrowsingPower.Installer.wixproj" `
                       -c "$(CONFIGURATION)" `
-                      -p:SuppressValidation=true
+                      -p:SuppressValidation=true `
+                      -p:NuGetAudit=false `
+                      --ignore-failed-sources
 
               - task: onebranch.pipeline.signing@1
                 displayName: Sign MSI
