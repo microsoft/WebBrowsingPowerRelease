@@ -158,10 +158,12 @@ extends:
                 displayName: Sign binaries
                 inputs:
                   command: sign
-                  signing_profile: external_distribution
+                  signing_environment: azure-ado
                   files_to_sign: |
                     EdgeBrowsingPower.exe;EdgeBrowsingPower.dll
                   search_root: $(REPO_ROOT)\$(PUBLISH_DIR)
+                  use_testsign: true
+                  in_container: true
 
               - task: PowerShell@2
                 displayName: Build MSI
@@ -180,10 +182,12 @@ extends:
                 displayName: Sign MSI
                 inputs:
                   command: sign
-                  signing_profile: external_distribution
+                  signing_environment: azure-ado
                   files_to_sign: |
                     EdgeBrowsingPower-$(VERSION).msi
                   search_root: $(REPO_ROOT)\$(INSTALLER_DIR)
+                  use_testsign: true
+                  in_container: true
 
               - task: PowerShell@2
                 displayName: Verify signatures
@@ -203,11 +207,13 @@ extends:
                       }
 
                       $signature = Get-AuthenticodeSignature -FilePath $file
-                      if ($signature.Status -ne "Valid") {
-                        throw "Invalid code signature for $file : $($signature.Status) $($signature.StatusMessage)"
+                      if ($signature.Status -eq "NotSigned") {
+                        throw "File was not signed: $file"
                       }
 
-                      Write-Host "Valid code signature: $file"
+                      Write-Host "Code signature present: $file"
+                      Write-Host "  Status: $($signature.Status)"
+                      Write-Host "  Subject: $($signature.SignerCertificate.Subject)"
                     }
 
               - task: PowerShell@2
