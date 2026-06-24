@@ -19,6 +19,7 @@ variables:
   RUNTIME_IDENTIFIER: win-x64
   PUBLISH_DIR: artifacts\EdgeBrowsingPower\win-x64
   INSTALLER_DIR: artifacts\EdgeBrowsingPower\installer
+  DOTNET_PUBLIC_NUGET_SOURCE: https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-public/nuget/v3/index.json
   ENABLE_PRS_DELAYSIGN: 1
   ROOT: $(Build.SourcesDirectory)
   REPOROOT: $(Build.SourcesDirectory)
@@ -121,6 +122,7 @@ extends:
                   script: |
                     dotnet restore "$(REPO_ROOT)\src\EdgeBrowsingPower\EdgeBrowsingPower.csproj" `
                       -r "$(RUNTIME_IDENTIFIER)" `
+                      --source "$(DOTNET_PUBLIC_NUGET_SOURCE)" `
                       --ignore-failed-sources `
                       -p:NuGetAudit=false
 
@@ -171,6 +173,7 @@ extends:
                       -c "$(CONFIGURATION)" `
                       -p:SuppressValidation=true `
                       -p:NuGetAudit=false `
+                      --source "$(DOTNET_PUBLIC_NUGET_SOURCE)" `
                       --ignore-failed-sources
 
               - task: onebranch.pipeline.signing@1
