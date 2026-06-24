@@ -72,7 +72,7 @@ $localeManifest = Get-Content (Join-Path $manifestRoot "Microsoft.EdgeBrowsingPo
 Assert-Contains "Winget version manifest" $versionManifest "PackageVersion: $ExpectedVersion"
 Assert-Contains "Winget installer manifest" $installerManifest "PackageVersion: $ExpectedVersion"
 Assert-Contains "Winget locale manifest" $localeManifest "PackageVersion: $ExpectedVersion"
-Assert-Contains "Winget installer URL" $installerManifest "https://github.com/microsoft/WebBrowsingPowerRelease/releases/download/v$ExpectedVersion/EdgeBrowsingPower-$ExpectedVersion-win-x64.msi"
+Assert-Contains "Winget installer URL" $installerManifest "https://github.com/microsoft/WebBrowsingPowerRelease/releases/download/v$ExpectedVersion/EdgeBrowsingPower-$ExpectedVersion.msi"
 
 $shaMatch = [regex]::Match($installerManifest, "InstallerSha256:\s*([A-Fa-f0-9]{64})")
 if (-not $shaMatch.Success) {
@@ -81,6 +81,6 @@ if (-not $shaMatch.Success) {
 
 $releaseDoc = Get-Content (Join-Path $root "docs\release.md") -Raw
 Assert-Contains "Release documentation" $releaseDoc $ExpectedVersion
-Assert-Contains "Release documentation" $releaseDoc "EdgeBrowsingPower-$ExpectedVersion-win-x64.msi"
+Assert-Contains "Release documentation" $releaseDoc "EdgeBrowsingPower-$ExpectedVersion.msi"
 
 Write-Host "Release version metadata is aligned to $ExpectedVersion."
