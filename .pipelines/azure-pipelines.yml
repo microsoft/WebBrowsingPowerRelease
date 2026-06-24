@@ -46,7 +46,6 @@ extends:
             variables:
               ob_outputDirectory: $(Build.ArtifactStagingDirectory)\release
               ob_artifactBaseName: release
-              ob_signing_setup_enabled: true
               ob_sdl_codeSignValidation_excludes: ''
             steps:
               - checkout: self
