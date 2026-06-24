@@ -20,7 +20,7 @@ variables:
   PUBLISH_DIR: artifacts\EdgeBrowsingPower\win-x64
   INSTALLER_DIR: artifacts\EdgeBrowsingPower\installer
   DOTNET_PUBLIC_NUGET_SOURCE: https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-public/nuget/v3/index.json
-  ENABLE_PRS_DELAYSIGN: 1
+  ENABLE_PRS_DELAYSIGN: 0
   ROOT: $(Build.SourcesDirectory)
   REPOROOT: $(Build.SourcesDirectory)
   OUTPUTROOT: $(Build.SourcesDirectory)\out
