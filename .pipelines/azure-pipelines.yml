@@ -50,6 +50,7 @@ extends:
               - checkout: self
                 clean: true
                 fetchDepth: 1
+                path: s
 
               - task: PowerShell@2
                 name: setVersion
@@ -60,8 +61,17 @@ extends:
                   script: |
                     $proj = "$(Build.SourcesDirectory)\src\EdgeBrowsingPower\EdgeBrowsingPower.csproj"
                     if (!(Test-Path $proj)) {
-                      throw "Project file not found: $proj"
+                      $proj = Get-ChildItem -Path "$(Pipeline.Workspace)" -Filter EdgeBrowsingPower.csproj -Recurse -File |
+                        Where-Object { $_.FullName -like "*\src\EdgeBrowsingPower\EdgeBrowsingPower.csproj" } |
+                        Select-Object -First 1 -ExpandProperty FullName
                     }
+
+                    if ([string]::IsNullOrWhiteSpace($proj) -or !(Test-Path $proj)) {
+                      throw "Project file not found under $(Pipeline.Workspace)."
+                    }
+
+                    $repoRoot = Split-Path (Split-Path (Split-Path $proj -Parent) -Parent) -Parent
+                    Write-Host "Repository root: $repoRoot"
 
                     [xml]$headXml = Get-Content $proj
                     $version = $headXml.Project.PropertyGroup.Version | Select-Object -First 1
@@ -71,7 +81,7 @@ extends:
 
                     $baseTag = "v$version"
                     $remoteTags = @(
-                      git ls-remote --tags origin "refs/tags/$baseTag*" |
+                      git -C $repoRoot ls-remote --tags origin "refs/tags/$baseTag*" |
                         ForEach-Object {
                           if ($_ -match "refs/tags/(.+?)(\^\{\})?$") {
                             $matches[1]
@@ -93,6 +103,7 @@ extends:
 
                     Write-Host "Version: $version"
                     Write-Host "Release tag: $releaseTag"
+                    Write-Host "##vso[task.setvariable variable=REPO_ROOT]$repoRoot"
                     Write-Host "##vso[task.setvariable variable=VERSION]$version"
                     Write-Host "##vso[task.setvariable variable=RELEASE_TAG]$releaseTag"
 
@@ -108,7 +119,7 @@ extends:
                   targetType: inline
                   pwsh: true
                   script: |
-                    dotnet restore "$(Build.SourcesDirectory)\src\EdgeBrowsingPower\EdgeBrowsingPower.csproj" `
+                    dotnet restore "$(REPO_ROOT)\src\EdgeBrowsingPower\EdgeBrowsingPower.csproj" `
                       -r "$(RUNTIME_IDENTIFIER)"
 
               - task: PowerShell@2
@@ -117,7 +128,7 @@ extends:
                   targetType: inline
                   pwsh: true
                   script: |
-                    dotnet build "$(Build.SourcesDirectory)\src\EdgeBrowsingPower\EdgeBrowsingPower.csproj" `
+                    dotnet build "$(REPO_ROOT)\src\EdgeBrowsingPower\EdgeBrowsingPower.csproj" `
                       -c "$(CONFIGURATION)" `
                       -r "$(RUNTIME_IDENTIFIER)" `
                       --self-contained true `
@@ -129,10 +140,10 @@ extends:
                   targetType: inline
                   pwsh: true
                   script: |
-                    $publishDir = "$(Build.SourcesDirectory)\$(PUBLISH_DIR)"
+                    $publishDir = "$(REPO_ROOT)\$(PUBLISH_DIR)"
                     New-Item -ItemType Directory -Force -Path $publishDir | Out-Null
 
-                    dotnet publish "$(Build.SourcesDirectory)\src\EdgeBrowsingPower\EdgeBrowsingPower.csproj" `
+                    dotnet publish "$(REPO_ROOT)\src\EdgeBrowsingPower\EdgeBrowsingPower.csproj" `
                       -c "$(CONFIGURATION)" `
                       -r "$(RUNTIME_IDENTIFIER)" `
                       --self-contained true `
@@ -146,7 +157,7 @@ extends:
                   signing_profile: external_distribution
                   files_to_sign: |
                     EdgeBrowsingPower.exe;EdgeBrowsingPower.dll
-                  search_root: $(Build.SourcesDirectory)\$(PUBLISH_DIR)
+                  search_root: $(REPO_ROOT)\$(PUBLISH_DIR)
 
               - task: PowerShell@2
                 displayName: Build MSI
@@ -154,7 +165,7 @@ extends:
                   targetType: inline
                   pwsh: true
                   script: |
-                    dotnet build "$(Build.SourcesDirectory)\installer\EdgeBrowsingPower.Installer\EdgeBrowsingPower.Installer.wixproj" `
+                    dotnet build "$(REPO_ROOT)\installer\EdgeBrowsingPower.Installer\EdgeBrowsingPower.Installer.wixproj" `
                       -c "$(CONFIGURATION)" `
                       -p:SuppressValidation=true
 
@@ -165,7 +176,7 @@ extends:
                   signing_profile: external_distribution
                   files_to_sign: |
                     EdgeBrowsingPower-$(VERSION).msi
-                  search_root: $(Build.SourcesDirectory)\$(INSTALLER_DIR)
+                  search_root: $(REPO_ROOT)\$(INSTALLER_DIR)
 
               - task: PowerShell@2
                 displayName: Verify signatures
@@ -174,9 +185,9 @@ extends:
                   pwsh: true
                   script: |
                     $files = @(
-                      "$(Build.SourcesDirectory)\$(PUBLISH_DIR)\EdgeBrowsingPower.exe",
-                      "$(Build.SourcesDirectory)\$(PUBLISH_DIR)\EdgeBrowsingPower.dll",
-                      "$(Build.SourcesDirectory)\$(INSTALLER_DIR)\EdgeBrowsingPower-$(VERSION).msi"
+                      "$(REPO_ROOT)\$(PUBLISH_DIR)\EdgeBrowsingPower.exe",
+                      "$(REPO_ROOT)\$(PUBLISH_DIR)\EdgeBrowsingPower.dll",
+                      "$(REPO_ROOT)\$(INSTALLER_DIR)\EdgeBrowsingPower-$(VERSION).msi"
                     )
 
                     foreach ($file in $files) {
@@ -205,12 +216,12 @@ extends:
                     New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
 
                     Compress-Archive `
-                      -Path "$(Build.SourcesDirectory)\$(PUBLISH_DIR)\*" `
+                      -Path "$(REPO_ROOT)\$(PUBLISH_DIR)\*" `
                       -DestinationPath "$releaseDir\$zipName" `
                       -Force
 
                     Copy-Item `
-                      -Path "$(Build.SourcesDirectory)\$(INSTALLER_DIR)\$msiName" `
+                      -Path "$(REPO_ROOT)\$(INSTALLER_DIR)\$msiName" `
                       -Destination "$releaseDir\$msiName" `
                       -Force
 
