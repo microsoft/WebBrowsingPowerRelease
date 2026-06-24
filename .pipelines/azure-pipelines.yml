@@ -23,10 +23,17 @@ variables:
   ROOT: $(Build.SourcesDirectory)
   REPOROOT: $(Build.SourcesDirectory)
   OUTPUTROOT: $(Build.SourcesDirectory)\out
+  WindowsContainerImage: onebranch.azurecr.io/windows/ltsc2022/vse2022:latest
 
 extends:
   template: v2/OneBranch.Official.CrossPlat.yml@templates
   parameters:
+    cloudvault:
+      enabled: false
+    featureFlags:
+      WindowsHostVersion: '1ESWindows2022'
+    release:
+      category: NonAzure
     stages:
       - stage: Build_Sign_Release
         displayName: Build, sign, and release
@@ -36,6 +43,8 @@ extends:
             pool:
               type: windows
             variables:
+              ob_outputDirectory: $(Build.ArtifactStagingDirectory)\release
+              ob_artifactBaseName: release
               ob_sdl_codeSignValidation_excludes: ''
             steps:
               - checkout: self
