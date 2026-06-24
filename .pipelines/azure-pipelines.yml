@@ -217,13 +217,6 @@ extends:
                     Write-Host "##vso[task.setvariable variable=ZIP]$releaseDir\$zipName"
                     Write-Host "##vso[task.setvariable variable=MSI]$releaseDir\$msiName"
 
-              - task: PublishPipelineArtifact@1
-                displayName: Publish release artifact
-                inputs:
-                  targetPath: $(Build.ArtifactStagingDirectory)\release\$(VERSION)
-                  artifact: release-$(RELEASE_TAG)
-                  publishLocation: pipeline
-
               - task: PowerShell@2
                 displayName: Create GitHub Release
                 condition: and(succeeded(), ne(variables['GITHUB_RELEASE_PAT'], ''))
